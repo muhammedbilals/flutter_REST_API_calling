@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_api_calling/services/bloc/data_image_bloc.dart';
 import 'package:flutter_api_calling/view/home_page.dart';
 
+
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+
   runApp(const MainApp());
 }
 
@@ -10,8 +16,11 @@ class MainApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: HomePage(),
+    return BlocProvider(
+      create: (context) => DataImageBloc(),
+      child: MaterialApp(
+        home: HomePage(),
+      ),
     );
   }
 }

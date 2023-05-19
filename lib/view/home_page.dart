@@ -1,11 +1,7 @@
-import 'dart:convert';
-import 'dart:developer';
-
 import 'package:flutter/material.dart';
-import 'package:flutter_api_calling/core/constant.dart';
-import 'package:flutter_api_calling/model/imagemodel.dart';
+import 'package:flutter_api_calling/services/bloc/data_image_bloc.dart';
 import 'package:flutter_api_calling/view/full_screen.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 // ignore: must_be_immutable
 class HomePage extends StatefulWidget {
@@ -16,32 +12,8 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
-
   TextEditingController controller = TextEditingController();
 
-  List<ImageModel> images = [];
-
-  void fetchImage(String searchWord) async {
-    final response = await http.get(Uri.parse('$baseUrl$apiKey&q=$searchWord'));
-    if (response.statusCode == 200) {
-      final body = response.body;
-      final json = jsonDecode(body);
-      final result = json['hits'] as List<dynamic>;
-      final transformed = result.map((e) {
-        return ImageModel(largeImageURL: e['largeImageURL']);
-      }).toList();
-      setState(() {
-        images = transformed;
-      });
-      print(transformed.toString());
-      log('got data');
-    } else {
-      // If the server did not return a 200 OK response,
-      // then throw an exception.
-      throw Exception('Failed to load image');
-    }
-  }
 
 
   @override
@@ -52,35 +24,41 @@ class _HomePageState extends State<HomePage> {
       appBar: AppBar(
         title: const Text('flutter api'),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Row(
+      body: BlocBuilder<DataImageBloc, DataImageState>(
+        builder: (context, state) {
+           if (state is DataImageInitial) {
+          context.read<DataImageBloc>().add(FetchImages(controller.text));
+        }
+        if(state is DisplayImages){
+          return SingleChildScrollView(
+            child: Column(
               children: [
-                SizedBox(
-                    width: size.width * 0.8,
-                    child: TextFormField(
-                      controller: controller,
-                    )),
-                ElevatedButton(
-                    onPressed: () {
-                      fetchImage(controller.text);
-                    },
-                    child: const Icon(Icons.search)),
-              ],
-            ),
-            controller.text != ''
-                ? images.isNotEmpty
-                    ? 
-                           GridView.builder(
-                            
+                Row(
+                  children: [
+                    SizedBox(
+                        width: size.width * 0.8,
+                        child: TextFormField(
+                          controller: controller,
+                        )),
+                    ElevatedButton(
+                        onPressed: () {
+                          BlocProvider.of<DataImageBloc>(context).add(FetchImages(
+                            controller.text
+                      ));
+                        },
+                        child: const Icon(Icons.search)),
+                  ],
+                ),
+                controller.text != ''
+                    ? state.images.isNotEmpty
+                        ? GridView.builder(
                             physics: NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
                             gridDelegate:
                                 const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 2,
                             ),
-                            itemCount: images.length,
+                            itemCount: state.images.length,
                             // images.length,
                             itemBuilder: (BuildContext context, int index) {
                               return GestureDetector(
@@ -89,23 +67,27 @@ class _HomePageState extends State<HomePage> {
                                       context,
                                       MaterialPageRoute(
                                           builder: (context) => FullScreen(
-                                              image: images[index]
+                                              image: state.images[index]
                                                   .largeImageURL!)));
                                 },
                                 child: SizedBox(
                                     width: size.width * 0.5,
                                     height: size.width * 0.5,
                                     child: Image.network(
-                                        images[index].largeImageURL!)),
+                                        state.images[index].largeImageURL!)),
                               );
                             },
                           )
-                        
-                      
-                    : const Center(child: CircularProgressIndicator())
-                : const Center(child: Text('Search Something'))
-          ],
-        ),
+                        : const Center(child: CircularProgressIndicator())
+                    : const Center(child: Text('Search Something'))
+              ],
+            ),
+          );
+        }
+           return const Center(
+          child: Text('Loading'),
+        );
+        },
       ),
     );
   }
